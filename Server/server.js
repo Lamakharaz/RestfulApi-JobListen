@@ -61,6 +61,7 @@ const upload = multer({
 
 
 
+/*
 //addEmployee.jsx
 //api create employee
 //file upload to node express
@@ -146,7 +147,7 @@ app.get('/salary', (req, res) => {
     })
 })
 
-
+*/
 
 
 app.listen(8081, () => {
@@ -330,9 +331,53 @@ app.get('/getRequesttothisJob/:id', (req, res) => {
 
 //////////////////////////////////////////////start
 
+
+// Define a middleware function for authentication
+function authenticate(req, res, next) {
+  const email = req.body.email;
+  const password = req.body.password;
+
+  // Perform authentication logic here (e.g., compare with stored hashed passwords)
+  // For simplicity, let's assume you have a "admin" table in your database with "email" and "password" columns
+  const sql = "SELECT * FROM admin WHERE email = ?";
+  connection.query(sql, [email], (err, results) => {
+    if (err) {
+      return res.json({ Status: "Error", Error: "Error in running query" });
+    }
+
+    if (results.length === 0) {
+      return res.json({ Status: "Error", Error: "Wrong Email or Password" });
+    }
+
+    const admin = results[0];
+    bcrypt.compare(password, admin.password, (err, isMatch) => {
+      if (err) {
+        return res.json({ Status: "Error", Error: "Error in comparing passwords" });
+      }
+
+      if (isMatch) {
+        // Authentication successful
+        req.admin = admin; // Store the authenticated admin object in the request
+        next(); // Proceed to the next middleware or route handler
+      } else {
+        return res.json({ Status: "Error", Error: "Wrong Email or Password" });
+      }
+    });
+  });
+}
+
+// Use the authenticate middleware in the '/LoginAdmin' route
+//http://localhost:8081/LoginAdmin/
+app.post('/LoginAdmin/', authenticate, (req, res) => {
+  return res.json({ Status: "Login Admin Success" });
+});
+
+
+
+
 //api login admin
 // http://localhost:8081/LoginAdmin
-app.post('/LoginAdmin', (req, res) => {
+app.get('/LoginAdmin', (req, res) => {
     const sql = "SELECT * FROM admin Where email = ? AND  password = ?";
     connection.query(sql, [req.body.email, req.body.password], (err, result) => {
         if (err) return res.json({ Status: "Error", Error: "Error in runnig query" });
@@ -377,6 +422,8 @@ app.get('/LoginAdmin/getJobList', (req, res) => {
 
 //add joblist Api
 // http://localhost:8081/LoginAdmin/AddJobList/ios Devloper/at least 10 year exp/Part Time/1300/Nablus
+// http://localhost:8081/LoginAdmin/AddJobList/andriod Devloper/at least 20 year exp/Full Time/2000/Rammallah
+
 app.post('/LoginAdmin/AddJobList/:title/:decr/:reqq/:salary/:location', (req, res) => {
 
     const admin = "SELECT * FROM admin Where email = ? AND  password = ?";
@@ -481,7 +528,7 @@ app.get('/LoginAdmin/RequestsJobList/', (req, res) => {
             const sql = "SELECT * FROM request";
             connection.query(sql, (err, result) => {
                 if (err) return res.json({ Error: "Get request error in sql to readJobList By admin" });
-                return res.json({ Status: "Success to read joblist By Admin", Result: result })
+                return res.json({ Status: "Success to read request By Admin", Result: result })
             })
 
         }
@@ -516,7 +563,8 @@ app.get('/LoginAdmin/getInfoJob/:id', (req, res) => {
 //
 //who seeker apply to this job
 //get information about  who apply(request to this job)
-// http://localhost:8081/LoginAdmin/getRequesttothisJob/2
+// http://localhost:8081/LoginAdmin/getRequesttothisJob/2 
+//2 id_joblist
 app.get('/LoginAdmin/getRequesttothisJob/:id', (req, res) => {
     const admin = "SELECT * FROM admin WHERE email = ? AND password = ?";
     connection.query(admin, [req.body.email, req.body.password], (err, result) => {
@@ -544,14 +592,9 @@ app.get('/LoginAdmin/getRequesttothisJob/:id', (req, res) => {
                         }
                     });
 
-
-
-
                 });
             });
         }
-
-
 
         else {
             return res.json({ Status: "Error", Error: "Wrong Email or Password Admin" });
@@ -567,6 +610,7 @@ app.get('/LoginAdmin/getRequesttothisJob/:id', (req, res) => {
 
 //get information about Seeker
 // http://localhost:8081/LoginAdmin/getInfoseekers/1
+//1 id_seeker
 app.get('/LoginAdmin/getInfoseekers/:id', (req, res) => {
     const admin = "SELECT * FROM admin Where email = ? AND  password = ?";
     connection.query(admin, [req.body.email, req.body.password], (err, result) => {
@@ -608,15 +652,15 @@ app.get('/LoginAdmin/Seekers/', (req, res) => {
 
 })
 
+
+
+
 //Part2
 
-
-
 //FILTER
-
-
 //filter by location
 // http://localhost:8081/Seekers/getJobList/FilterByLocation/Nablus
+//Ramallah
 app.get('/Seekers/getJobList/FilterByLocation/:location', (req, res) => {
     const location = req.params.location;
     const sql = "SELECT * FROM joblist WHERE location = ?";
@@ -629,6 +673,7 @@ app.get('/Seekers/getJobList/FilterByLocation/:location', (req, res) => {
 
 
 })
+
 //filter by tittle
 //http://localhost:8081/Seekers/getJobList/FilterBytittle/DevOP
 app.get('/Seekers/getJobList/FilterBytittle/:title', (req, res) => {
@@ -723,22 +768,23 @@ app.delete('/LoginSeeker/UnSaveJobList/:id_joblist', (req, res) => {
             connection.query(query, [id_seeker, id_joblist], (err, result) => {
                 if (err) {
                     return res.json({ Error: "Inside Create query" });
-                }
-                if (!result.length || result.length === 0) {
+                } 
+               
+               if (!result.length && result.length == 0) {
                     // handle case where result is empty or null
-                    console.log("Result is empty or null");
+                   // console.log("Result is empty or null");
                     return res.json({ Status: "Not Save it Before", Error: "Result Not is save it before" });
                 }
-
                 return res.json({ Status: "Success to unSave job" });
+               
             });
 
-
+          
 
         }
 
         else {
-            return res.json({ Status: "Error", Error: "Wrong Email or Password" });
+            return res.json({ Status: "Error", Error: "Wrong Email or phone" });
         }
     })
 
@@ -808,9 +854,12 @@ app.get('/Seekers/getJobList', (req, res) => {
     })
 })
 
+
 //Sign up seekers
 //add seekers api  
 // http://localhost:8081/Seekers/AddSeekers/reyad kharraz/reyad@gmail.com/0599317052
+//http://localhost:8081/Seekers/AddSeekers/Leen sharaf/leen@gmail.com/0597369625
+//http://localhost:8081/Seekers/AddSeekers/amjad/amjad@gmail.com/0591234567
 app.post('/Seekers/AddSeekers/:name/:email/:phone', (req, res) => {
     const name = req.params.name;
     const email = req.params.email;
@@ -892,6 +941,49 @@ app.post('/LoginSeeker/uploadCv/:idJoblist', upload.single('pdf'), (req, res) =>
             return res.json({ Status: "Error", Error: "Wrong Email or Password Seekers" });
         }
     });
+
+});
+
+
+
+//what the seeker requests
+// http://localhost:8081/LoginSeeker/getRequest/
+
+app.get('/LoginSeeker/getRequest/', (req, res) => {
+    const seekersql = "SELECT * FROM seekers Where email = ? AND  phone = ?";
+    connection.query(seekersql, [req.body.email, req.body.phone], (err, result) => {
+        if (err) return res.json({ Status: "Error", Error: "Error in running query" });
+        if (result.length > 0) {
+            const id_seeker = result[0].id;
+            const sql = "SELECT * FROM request WHERE id_seeker = ?";
+            connection.query(sql, [id_seeker], (err, requestResults) => {
+                if (err) return res.json({ Error: "Get seekers error in sql" });
+                const joblist = [];
+                requestResults.forEach((requestObj) => {
+                    const id = requestObj.id_joblist;
+                    
+                    const sql = "SELECT * FROM joblist WHERE id = ?";
+                    connection.query(sql, [id], (err, seekerResults) => {
+                        if (err) return res.json({ Error: "Get joblist error in sql" });
+                        joblist.push(seekerResults);
+                        if (joblist.length === requestResults.length) {
+                            // all requests have been processed
+                            return res.json({ Status: "Success", Result: joblist });
+                        }
+                    });
+
+                });
+            });
+        }
+
+        else {
+            return res.json({ Status: "Error", Error: "Wrong Email or phone seeker" });
+        }
+
+
+
+    });
+
 
 });
 
